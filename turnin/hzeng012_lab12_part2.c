@@ -92,54 +92,6 @@ int Demo_Tick(int state) {
     return state;
 }
 
-enum Rows_States {rows_wait, rows_up, rows_down, rows_buffer};
-int Rows_Tick(int state) {
-    unsigned char up = (~PINA) & 0x02;
-    unsigned char down = (~PINA) & 0x01;
-    static unsigned char pattern = 0xFF;
-    static unsigned char row = 0x00; //0xfb
-
-    switch(state) {
-        case rows_wait: 
-            state = rows_wait;
-            /*if(up) {
-                state = rows_up;
-            } else if(down) {
-                state = rows_down;
-            } else {
-                state = rows_wait;
-            }*/
-            break;
-        case rows_up: state = rows_buffer; break;
-        case rows_down: state = rows_buffer; break;
-        case rows_buffer:
-            if(!up && !down) {
-                state = rows_wait;
-            } else {
-                state = rows_buffer;
-            }
-            break;
-        default: state = rows_wait; break;
-    }
-    switch(state) {
-        case rows_wait: break;
-        case rows_up:
-            if(row <= 0xFE) {
-                row = (row >> 1) | 0x10;
-            }
-            break;
-        case rows_down: 
-            if(row >= 0xEF) {
-                row = (row << 1) | 0x01;
-            }
-            break;
-        case rows_buffer: break;
-    }
-    transmit_data(pattern, 1);    // Pattern to display
-    transmit_data(row, 2);        // Row(s) displaying pattern
-    return state;
-}
-
 
 enum Columns_States{columns_wait, columns_left, columns_right, columns_buffer};
 int Columns_Tick(int state) {
@@ -174,7 +126,7 @@ int Columns_Tick(int state) {
         case columns_left:
             if(pattern <= 0x80) {
                 pattern = pattern >> 1;
-            } else
+            }
             break;
         case columns_right: 
             if(pattern >= 0x01) {
@@ -194,8 +146,8 @@ int main(void) {
     DDRC = 0xFF; PORTC = 0x00;
     DDRD = 0xFF; PORTD = 0x00;
     /* Insert your solution below */
-    static task task1, task2, task3; //static task variables
-    task *tasks[] = { &task1, &task2, &task3 };
+    static task task1, task2; //static task variables
+    task *tasks[] = { &task1, &task2 };
     const unsigned short numTasks = sizeof(tasks)/sizeof(*tasks);
     const char start = -1;
 
@@ -205,23 +157,17 @@ int main(void) {
     task1.elapsedTime = task1.period;
     task1.TickFct = &Demo_Tick;
 
-    // Shift Rows
+    // Shift Columns
     task2.state = start;
     task2.period = 100;
     task2.elapsedTime = task2.period;
-    task2.TickFct = &Rows_Tick;
-
-    // Shift Columns
-    task3.state = start;
-    task3.period = 100;
-    task3.elapsedTime = task3.period;
-    task3.TickFct = &Columns_Tick;
+    task2.TickFct = &Columns_Tick;
 
 
     unsigned short i;
 
     unsigned long GCD = tasks[0]->period;
-    for(i = 1; i < 2/*numTasks*/; i++) {
+    for(i = 1; i < numTasks; i++) {
         GCD = findGCD(GCD, tasks[i]->period);
     }
 

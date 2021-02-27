@@ -1,7 +1,7 @@
  /* Author: Hulbert Zeng
  * Partner(s) Name (if applicable):  
  * Lab Section: 021
- * Assignment: Lab #12  Exercise #1
+ * Assignment: Lab #12  Exercise #4
  * Exercise Description: [optional - include for your own benefit]
  *
  * I acknowledge all content contained herein, excluding template or example
@@ -50,93 +50,103 @@ void transmit_data(unsigned char data, unsigned char side) {
 }
 
 // shared task variables
+unsigned short patterns[] = {0x3C, 0x24, 0x3C};
+unsigned short rows[] = {0x17, 0x1B, 0x1D};
+unsigned char i = 0;
 
-//--------------------------------------
-// LED Matrix Demo SynchSM
-// Period: 100 ms
-//--------------------------------------
-enum Demo_States {shift};
-int Demo_Tick(int state) {
-
-    // Local Variables
-    static unsigned char pattern = 0x80;    // LED pattern - 0: LED off; 1: LED on
-    static unsigned char row = 0xFE;      // Row(s) displaying pattern. 
-                            // 0: display pattern on row
-                            // 1: do NOT display pattern on row
-    // Transitions
-    switch (state) {
-        case shift:    
-            break;
-        default:    
-            state = shift;
-            break;
-    }    
-    // Actions
-    switch (state) {
-            case shift:    
-            if (row == 0xEF && pattern == 0x01) { // Reset demo 
-                pattern = 0x80;            
-                row = 0xFE;
-            } else if (pattern == 0x01) { // Move LED to start of next row
-                pattern = 0x80;
-                row = (row << 1) | 0x01;
-            } else { // Shift LED one spot to the right on current row
-                pattern >>= 1;
-            }
-            break;
-        default:
-    break;
+// display hollow rectangle
+enum Rect_States{ display };
+int Rect(int state) {
+    switch(state) {
+        case display: state = display; break;
+        default: state = display; break;
     }
-    PORTC = transmit_data(pattern, 1);    // Pattern to display
-    PORTD = transmit_data(row, 2);        // Row(s) displaying pattern     
+    switch(state) {
+        case display:
+            if(i >= 3) {
+                i = 0;
+            }
+            PORTC = transmit_data(patterns[i], 1);
+            PORTD = transmit_data(rows[i], 2);
+            ++i;
+            break;
+    }
     return state;
 }
 
-
-enum Rows_States {rows_wait, rows_up, rows_down, rows_buffer};
-int Rows_Tick(int state) {
-    unsigned char up = (~PINA) & 0x02;
-    unsigned char down = (~PINA) & 0x01;
-    static unsigned char pattern = 0xFF;
-    static unsigned char row = 0xFB;
+// move hollow rectangle
+enum Move_Rect_States{ wait, up_state, down_state, left_state, right_state, buffer };
+int Move_Rect(int state) {
+    unsigned char up = (~PINA) & 0x08;
+    unsigned char down = (~PINA) & 0x04;
+    unsigned char left = (~PINA) & 0x02;
+    unsigned char right = (~PINA) & 0x01;
+    static unsigned x = 0;
+    static unsigned y = 0;
 
     switch(state) {
-        case rows_wait: 
+        case wait:
             if(up) {
-                state = rows_up;
+                state = up_state;
             } else if(down) {
-                state = rows_down;
+                state = down_state;
+            } else if(left) {
+                state = left_state;
+            } else if(right) {
+                state = right_state;
             } else {
-                state = rows_wait;
+                state = wait;
             }
             break;
-        case rows_up: state = rows_buffer; break;
-        case rows_down: state = rows_buffer; break;
-        case rows_buffer:
-            if(!up && !down) {
-                state = rows_wait;
+        case up_state: state = buffer; break;
+        case down_state: state = buffer; break;
+        case left_state: state = buffer; break;
+        case right_state: state = buffer; break;
+        case buffer:
+            if(!up && !down && !left && !right) {
+                state = wait;
             } else {
-                state = rows_buffer;
+                state = buffer;
             }
             break;
-        default: state = rows_wait; break;
+        default: state = wait; break;
     }
     switch(state) {
-        case rows_wait: break;
-        case rows_up:
-            if(row <= 0xFE) {
-                row = (row >> 1) | 0x10;
+        case wait: break;
+        case up_state:
+            if(y < 1) {
+                ++y;
+                for(unsigned char j = 0; j < 3; ++j) {
+                    rows[j] = (rows[j] >> 1) || 0x10;
+                }
             }
             break;
-        case rows_down: 
-            if(row >= 0xEF) {
-                row = (row << 1) | 0x01;
+        case down_state:
+            if(y > -1) {
+                --y;
+                for(unsigned char j = 0; j < 3; ++j) {
+                    rows[j] = (rows[j] << 1) || 0x10;
+                }
             }
             break;
-        case rows_buffer: break;
+        case left_state:
+            if(x > -2) {
+                --x;
+                for(unsigned char j = 0; j < 3; ++j) {
+                    patterns[j] = patterns[j] << 1;
+                }
+            }
+            break;
+        case right_state:
+            if(x < 2) {
+                ++x;
+                for(unsigned char j = 0; j < 3; ++j) {
+                    patterns[j] = patterns[j] >> 1;
+                }
+            }
+            break;
+        case buffer: break;
     }
-    transmit_data(pattern, 1);    // Pattern to display
-    transmit_data(row, 2);        // Row(s) displaying pattern
     return state;
 }
 
@@ -151,18 +161,17 @@ int main(void) {
     const unsigned short numTasks = sizeof(tasks)/sizeof(*tasks);
     const char start = -1;
 
-    // LED Matrix
+    // Hollow rectangle
     task1.state = start;
-    task1.period = 100;
+    task1.period = 1;
     task1.elapsedTime = task1.period;
-    task1.TickFct = &Demo_Tick;
+    task1.TickFct = &Rect;
 
-    // Shift Rows
+    // Move hollow rectangle
     task2.state = start;
-    task2.period = 100;
+    task2.period = 50;
     task2.elapsedTime = task2.period;
-    task2.TickFct = &Rows_Tick;
-
+    task2.TickFct = &MoveRect;
 
     unsigned short i;
 
@@ -174,7 +183,7 @@ int main(void) {
     TimerSet(GCD);
     TimerOn();
     while (1) {
-        for(i = 1; i < numTasks; i++) {
+        for(i = 0; i < numTasks; i++) {
             if(tasks[i]->elapsedTime == tasks[i]->period) {
                 tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
                 tasks[i]->elapsedTime = 0;
