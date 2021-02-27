@@ -66,8 +66,8 @@ int Rect(int state) {
             if(i >= 3) {
                 i = 0;
             }
-            PORTC = transmit_data(patterns[i], 1);
-            PORTD = transmit_data(rows[i], 2);
+            transmit_data(patterns[i], 1);
+            transmit_data(rows[i], 2);
             ++i;
             break;
     }

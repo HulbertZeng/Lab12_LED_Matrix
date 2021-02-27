@@ -1,7 +1,7 @@
  /* Author: Hulbert Zeng
  * Partner(s) Name (if applicable):  
  * Lab Section: 021
- * Assignment: Lab #12  Exercise #2
+ * Assignment: Lab #12  Exercise #1
  * Exercise Description: [optional - include for your own benefit]
  *
  * I acknowledge all content contained herein, excluding template or example
@@ -87,28 +87,28 @@ int Demo_Tick(int state) {
         default:
     break;
     }
-    PORTC = transmit_data(pattern, 1);    // Pattern to display
-    PORTD = transmit_data(row, 2);        // Row(s) displaying pattern    
+    transmit_data(pattern, 1);    // Pattern to display
+    transmit_data(row, 2);        // Row(s) displaying pattern     
     return state;
 }
+
 
 enum Rows_States {rows_wait, rows_up, rows_down, rows_buffer};
 int Rows_Tick(int state) {
     unsigned char up = (~PINA) & 0x02;
     unsigned char down = (~PINA) & 0x01;
     static unsigned char pattern = 0xFF;
-    static unsigned char row = 0x00; //0xfb
+    static unsigned char row = 0xFB;
 
     switch(state) {
         case rows_wait: 
-            state = rows_wait;
-            /*if(up) {
+            if(up) {
                 state = rows_up;
             } else if(down) {
                 state = rows_down;
             } else {
                 state = rows_wait;
-            }*/
+            }
             break;
         case rows_up: state = rows_buffer; break;
         case rows_down: state = rows_buffer; break;
@@ -140,62 +140,14 @@ int Rows_Tick(int state) {
     return state;
 }
 
-
-enum Columns_States{columns_wait, columns_left, columns_right, columns_buffer};
-int Columns_Tick(int state) {
-    unsigned char left = (~PINA) & 0x08;
-    unsigned char right = (~PINA) & 0x04;
-    static unsigned char pattern = 0x10;
-    static unsigned char row = 0x00;
-
-    switch(state) {
-        case columns_wait: 
-            if(left) {
-                state = columns_left;
-            } else if(right) {
-                state = columns_right;
-            } else {
-                state = columns_wait;
-            }
-            break;
-        case columns_left: state = columns_buffer; break;
-        case columns_right: state = columns_buffer; break;
-        case rows_buffer:
-            if(!left && !right) {
-                state = columns_wait;
-            } else {
-                state = columns_buffer;
-            }
-            break;
-        default: state = columns_wait; break;
-    }
-    switch(state) {
-        case columns_wait: break;
-        case columns_left:
-            if(pattern <= 0x80) {
-                pattern = pattern >> 1;
-            } else
-            break;
-        case columns_right: 
-            if(pattern >= 0x01) {
-                pattern = pattern << 1;
-            }
-            break;
-        case columns_buffer: break;
-    }
-    transmit_data(pattern, 1);    // Pattern to display
-    transmit_data(row, 2);        // Row(s) displaying pattern  
-    return state;
-}
-
 int main(void) {
     /* Insert DDR and PORT initializations */
     DDRA = 0x00; PORTA = 0xFF;
     DDRC = 0xFF; PORTC = 0x00;
     DDRD = 0xFF; PORTD = 0x00;
     /* Insert your solution below */
-    static task task1, task2, task3; //static task variables
-    task *tasks[] = { &task1, &task2, &task3 };
+    static task task1, task2; //static task variables
+    task *tasks[] = { &task1, &task2 };
     const unsigned short numTasks = sizeof(tasks)/sizeof(*tasks);
     const char start = -1;
 
@@ -211,24 +163,18 @@ int main(void) {
     task2.elapsedTime = task2.period;
     task2.TickFct = &Rows_Tick;
 
-    // Shift Columns
-    task3.state = start;
-    task3.period = 100;
-    task3.elapsedTime = task3.period;
-    task3.TickFct = &Columns_Tick;
-
 
     unsigned short i;
 
     unsigned long GCD = tasks[0]->period;
-    for(i = 1; i < 2/*numTasks*/; i++) {
+    for(i = 1; i < numTasks; i++) {
         GCD = findGCD(GCD, tasks[i]->period);
     }
 
     TimerSet(GCD);
     TimerOn();
     while (1) {
-        for(i = 2; i < numTasks; i++) {
+        for(i = 1; i < numTasks; i++) {
             if(tasks[i]->elapsedTime == tasks[i]->period) {
                 tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
                 tasks[i]->elapsedTime = 0;

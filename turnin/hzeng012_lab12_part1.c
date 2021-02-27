@@ -87,8 +87,8 @@ int Demo_Tick(int state) {
         default:
     break;
     }
-    PORTC = transmit_data(pattern, 1);    // Pattern to display
-    PORTD = transmit_data(row, 2);        // Row(s) displaying pattern     
+    transmit_data(pattern, 1);    // Pattern to display
+    transmit_data(row, 2);        // Row(s) displaying pattern     
     return state;
 }
 

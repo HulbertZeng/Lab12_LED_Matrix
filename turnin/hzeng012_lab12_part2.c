@@ -87,8 +87,8 @@ int Demo_Tick(int state) {
         default:
     break;
     }
-    PORTC = transmit_data(pattern, 1);    // Pattern to display
-    PORTD = transmit_data(row, 2);        // Row(s) displaying pattern    
+    transmit_data(pattern, 1);    // Pattern to display
+    transmit_data(row, 2);        // Row(s) displaying pattern    
     return state;
 }
 
@@ -174,7 +174,7 @@ int main(void) {
     TimerSet(GCD);
     TimerOn();
     while (1) {
-        for(i = 2; i < numTasks; i++) {
+        for(i = 1; i < numTasks; i++) {
             if(tasks[i]->elapsedTime == tasks[i]->period) {
                 tasks[i]->state = tasks[i]->TickFct(tasks[i]->state);
                 tasks[i]->elapsedTime = 0;
