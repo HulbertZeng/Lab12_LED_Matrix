@@ -7,7 +7,7 @@
  * I acknowledge all content contained herein, excluding template or example
  * code, is my own original work.
  *
- *  Demo Link: Youtube URL>
+ *  Demo Link: https://youtu.be/5SU5GZOhIdw
  */
 #include <avr/io.h>
 #ifdef _SIMULATE_
@@ -17,33 +17,23 @@
 #include "timer.h"
 #include "scheduler.h"
 
-void transmit_data(unsigned char data, unsigned char side) {
+void transmit_data(unsigned char data, unsigned char gnds) {
     int i;
-    for(i = 0; i < 8; ++i) {
-        // Sets SRCLR to 1 allowing data to be set
-        // Also clears SRCLK in preparation of sending data
-        if(side == 1) {
-            PORTC = 0x08;
-            // set SER = next bit of data to be sent.
-            PORTC |= ((data >> i) & 0x01);
-            // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
-            PORTC |= 0x02;
-        } else {
-            PORTD = 0x08;
-            // set SER = next bit of data to be sent.
-            PORTD |= ((data >> i) & 0x01);
-            // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
-            PORTD |= 0x02;
-        }
-
+    for (i = 0; i < 8 ; ++i) {
+         // Sets SRCLR to 1 allowing data to be set
+         // Also clears SRCLK in preparation of sending data
+         PORTC = 0x08;
+         PORTD = 0x08;
+         // set SER = next bit of data to be sent.
+         PORTC |= ((data >> i) & 0x01);
+         PORTD |= ((gnds >> i) & 0x01);
+         // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
+         PORTC |= 0x02;
+         PORTD |= 0x02;
     }
-    if(side == 1) {
-        // set RCLK = 1. Rising edge copies data from “Shift” register to “Storage” register
-        PORTC |= 0x04;
-    } else {
-        // set RCLK = 1. Rising edge copies data from “Shift” register to “Storage” register
-        PORTD |= 0x04;
-    }
+    // set RCLK = 1. Rising edge copies data from â€œShiftâ€ register to â€œStorageâ€ register
+    PORTC |= 0x04;
+    PORTD |= 0x04;
     // clears all lines in preparation of a new transmission
     PORTC = 0x00;
     PORTD = 0x00;
@@ -51,7 +41,7 @@ void transmit_data(unsigned char data, unsigned char side) {
 
 // shared task variables
 unsigned short patterns[] = {0x3C, 0x24, 0x3C};
-unsigned short rows[] = {0x17, 0x1B, 0x1D};
+unsigned short rows[] = {0xEF, 0xDF, 0xBF}; //ground displays only the 5 most significant bits
 unsigned char i = 0;
 
 // display hollow rectangle
@@ -67,8 +57,7 @@ int Rect(int state) {
             if(i >= 3) {
                 i = 0;
             }
-            transmit_data(patterns[i], 1);
-            transmit_data(rows[i], 2);
+            transmit_data(patterns[i], rows[i]);
             ++i;
             break;
     }

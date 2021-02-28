@@ -7,7 +7,7 @@
  * I acknowledge all content contained herein, excluding template or example
  * code, is my own original work.
  *
- *  Demo Link: Youtube URL>
+ *  Demo Link: https://youtu.be/Bk7J2So5gCk
  */
 #include <avr/io.h>
 #ifdef _SIMULATE_
@@ -17,33 +17,23 @@
 #include "timer.h"
 #include "scheduler.h"
 
-void transmit_data(unsigned char data, unsigned char side) {
+void transmit_data(unsigned char data, unsigned char gnds) {
     int i;
-    for(i = 0; i < 8; ++i) {
-        // Sets SRCLR to 1 allowing data to be set
-        // Also clears SRCLK in preparation of sending data
-        if(side == 1) {
-            PORTC = 0x08;
-            // set SER = next bit of data to be sent.
-            PORTC |= ((data >> i) & 0x01);
-            // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
-            PORTC |= 0x02;
-        } else {
-            PORTD = 0x08;
-            // set SER = next bit of data to be sent.
-            PORTD |= ((data >> i) & 0x01);
-            // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
-            PORTD |= 0x02;
-        }
-
+    for (i = 0; i < 8 ; ++i) {
+         // Sets SRCLR to 1 allowing data to be set
+         // Also clears SRCLK in preparation of sending data
+         PORTC = 0x08;
+         PORTD = 0x08;
+         // set SER = next bit of data to be sent.
+         PORTC |= ((data >> i) & 0x01);
+         PORTD |= ((gnds >> i) & 0x01);
+         // set SRCLK = 1. Rising edge shifts next bit of data into the shift register
+         PORTC |= 0x02;
+         PORTD |= 0x02;
     }
-    if(side == 1) {
-        // set RCLK = 1. Rising edge copies data from “Shift” register to “Storage” register
-        PORTC |= 0x04;
-    } else {
-        // set RCLK = 1. Rising edge copies data from “Shift” register to “Storage” register
-        PORTD |= 0x04;
-    }
+    // set RCLK = 1. Rising edge copies data from â€œShiftâ€ register to â€œStorageâ€ register
+    PORTC |= 0x04;
+    PORTD |= 0x04;
     // clears all lines in preparation of a new transmission
     PORTC = 0x00;
     PORTD = 0x00;
@@ -87,8 +77,7 @@ int Demo_Tick(int state) {
         default:
     break;
     }
-    transmit_data(pattern, 1);    // Pattern to display
-    transmit_data(row, 2);        // Row(s) displaying pattern     
+    transmit_data(pattern, row);   
     return state;
 }
 
@@ -98,7 +87,7 @@ int Rows_Tick(int state) {
     unsigned char up = (~PINA) & 0x02;
     unsigned char down = (~PINA) & 0x01;
     static unsigned char pattern = 0xFF;
-    static unsigned char row = 0xFB;
+    static unsigned char row = 0xDF; //ground displays only the 5 most significant bits
 
     switch(state) {
         case rows_wait: 
@@ -124,19 +113,18 @@ int Rows_Tick(int state) {
     switch(state) {
         case rows_wait: break;
         case rows_up:
-            if(row <= 0xFE) {
-                row = (row >> 1) | 0x10;
+            if(row < 0xF7) {
+                row = (row >> 1) | 0x80;
             }
             break;
-        case rows_down: 
-            if(row >= 0xEF) {
+        case rows_down:
+            if(row > 0x7F) {
                 row = (row << 1) | 0x01;
             }
             break;
         case rows_buffer: break;
     }
-    transmit_data(pattern, 1);    // Pattern to display
-    transmit_data(row, 2);        // Row(s) displaying pattern
+    transmit_data(pattern, row);
     return state;
 }
 

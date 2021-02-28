@@ -7,7 +7,7 @@
  * I acknowledge all content contained herein, excluding template or example
  * code, is my own original work.
  *
- *  Demo Link: Youtube URL>
+ *  Demo Link: https://youtu.be/p2jrBEsvIuE
  */
 #include <avr/io.h>
 #ifdef _SIMULATE_
@@ -112,7 +112,7 @@ int Columns_Tick(int state) {
             break;
         case columns_left: state = columns_buffer; break;
         case columns_right: state = columns_buffer; break;
-        case rows_buffer:
+        case columns_buffer:
             if(!left && !right) {
                 state = columns_wait;
             } else {
@@ -124,13 +124,13 @@ int Columns_Tick(int state) {
     switch(state) {
         case columns_wait: break;
         case columns_left:
-            if(pattern <= 0x80) {
-                pattern = pattern >> 1;
+            if(pattern < 0x80) {
+                pattern = pattern << 1;
             }
             break;
         case columns_right: 
-            if(pattern >= 0x01) {
-                pattern = pattern << 1;
+            if(pattern > 0x01) {
+                pattern = pattern >> 1;
             }
             break;
         case columns_buffer: break;
